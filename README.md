@@ -1,44 +1,51 @@
-# Optic Disc Detection using U-Net
+# Optic Disc Detection (U-Net)
 
-This project implements a Deep Learning pipeline for detecting the Optic Disc in retinal images.
+Deep learning pipeline for optic disc segmentation on retinal fundus images.
 
-## Setup
+## Prerequisites
 
-1. Install requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Prepare Dataset:
-   - Download DRIVE or STARE dataset.
-   - Place images in `data/images` and binary masks in `data/masks`.
-
-## Usage
-
-### Training
-
-Train the U-Net model:
+From repository root:
 
 ```bash
-python train.py --images_dir data/images --masks_dir data/masks --epochs 50 --batch_size 4
+pip install -r Optic_Disc_Detection/requirements.txt
 ```
 
-Checkpoints will be saved in `checkpoints/`.
+## Dataset Setup
 
-### Evaluation
-
-Evaluate the model using Dice Score and IoU:
+1. Download DRIVE and place zip in `Optic_Disc_Detection/downloads/`.
+2. Run:
 
 ```bash
-python evaluate.py --images_dir data/images --masks_dir data/masks --model_path checkpoints/best_model.pth
+python Optic_Disc_Detection/setup_dataset.py
 ```
 
-### Inference
+Detailed instructions:
 
-Run inference on a single image:
+- `Optic_Disc_Detection/DATASET_DOWNLOAD.md`
+
+## Training
 
 ```bash
-python inference.py --image_path path/to/image.jpg --model_path checkpoints/best_model.pth --save
+python Optic_Disc_Detection/train.py --images_dir Optic_Disc_Detection/data/training/images --masks_dir Optic_Disc_Detection/data/training/masks --epochs 50 --batch_size 4
 ```
 
-This will save the result as `output_detection.png`.
+Best checkpoint is saved to `checkpoints/best_model.pth`.
+
+## Evaluation
+
+```bash
+python Optic_Disc_Detection/evaluate.py --images_dir Optic_Disc_Detection/data/test/images --masks_dir Optic_Disc_Detection/data/test/masks --model_path checkpoints/best_model.pth
+```
+
+## Inference
+
+```bash
+python Optic_Disc_Detection/inference.py --image_path path/to/image.jpg --model_path checkpoints/best_model.pth --save
+```
+
+Output image is saved as `output_detection.png` when `--save` is used.
+
+## Notes
+
+- CLAHE preprocessing is applied in both dataset loading and inference.
+- Use the same `--img_size` across training, evaluation, and inference for consistency.

@@ -1,110 +1,72 @@
 import os
+import shutil
 import zipfile
 from pathlib import Path
-import shutil
 
-def setup_drive_dataset():
-    """
-    Extract and organize DRIVE dataset for optic disc detection training.
-    """
-    
-    # Paths
-    base_dir = Path("Optic_Disc_Detection")
-    downloads_dir = base_dir / "downloads"
-    data_dir = base_dir / "data"
-    
-    # Look for DRIVE zip (various possible names)
-    possible_zips = [
-        "DRIVE.zip",
-        "drive.zip",
-        "training.zip",
-        "test.zip"
-    ]
-    
+
+def setup_drive_dataset() -> bool:
+    """Extract and organize DRIVE dataset into train/test image-mask structure."""
+    script_dir = Path(__file__).resolve().parent
+    downloads_dir = script_dir / "downloads"
+    data_dir = script_dir / "data"
+    downloads_dir.mkdir(parents=True, exist_ok=True)
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    possible_zips = ["DRIVE.zip", "drive.zip", "training.zip", "test.zip"]
     zip_path = None
-    for zip_name in possible_zips:
-        candidate = downloads_dir / zip_name
+    for name in possible_zips:
+        candidate = downloads_dir / name
         if candidate.exists():
             zip_path = candidate
             break
-    
-    # Create directories
-    os.makedirs(downloads_dir, exist_ok=True)
-    os.makedirs(data_dir, exist_ok=True)
-    
-    if not zip_path:
-        print(f"❌ Error: DRIVE dataset ZIP not found in {downloads_dir}")
-        print(f"   Looking for: {', '.join(possible_zips)}")
-        print(f"\nPlease download the dataset first. See DATASET_DOWNLOAD.md")
+
+    if zip_path is None:
+        print(f"Error: DRIVE archive not found in {downloads_dir}")
+        print(f"Expected one of: {', '.join(possible_zips)}")
+        print("See Optic_Disc_Detection/DATASET_DOWNLOAD.md for details.")
         return False
-    
-    print(f"📦 Found: {zip_path.name}")
-    print(f"📦 Extracting...")
-    
-    # Extract
+
     extract_dir = downloads_dir / "DRIVE_extracted"
-    os.makedirs(extract_dir, exist_ok=True)
-    
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_dir)
-    
-    print("✅ Extraction complete")
-    
-    # Organize files
-    # DRIVE structure varies, try to find images
-    print("\n📁 Organizing files...")
-    
+    extract_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Found archive: {zip_path.name}")
+    print("Extracting dataset...")
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        zf.extractall(extract_dir)
+
     training_dir = data_dir / "training"
     test_dir = data_dir / "test"
-    
-    os.makedirs(training_dir / "images", exist_ok=True)
-    os.makedirs(training_dir / "masks", exist_ok=True)
-    os.makedirs(test_dir / "images", exist_ok=True)
-    os.makedirs(test_dir / "masks", exist_ok=True)
-    
-    # Find and copy files (adapt based on actual DRIVE structure)
-    # This is a template - actual paths may vary
+    for split_dir in [training_dir, test_dir]:
+        (split_dir / "images").mkdir(parents=True, exist_ok=True)
+        (split_dir / "masks").mkdir(parents=True, exist_ok=True)
+
     train_count = 0
     test_count = 0
-    
-    # Search for image files
-    for root, dirs, files in os.walk(extract_dir):
+    for root, _, files in os.walk(extract_dir):
+        root_lower = root.lower()
         for file in files:
+            if not file.lower().endswith((".png", ".jpg", ".jpeg", ".tif", ".tiff")):
+                continue
             src = Path(root) / file
-            
-            # Training images
-            if 'training' in root.lower() and file.endswith(('.tif', '.png', '.jpg')):
-                if 'manual' in file.lower() or 'mask' in file.lower():
-                    dest = training_dir / "masks" / file
-                else:
-                    dest = training_dir / "images" / file
+            is_mask = ("manual" in file.lower()) or ("mask" in file.lower())
+
+            if "training" in root_lower:
+                dest = training_dir / ("masks" if is_mask else "images") / file
                 shutil.copy2(src, dest)
                 train_count += 1
-            
-            # Test images
-            elif 'test' in root.lower() and file.endswith(('.tif', '.png', '.jpg')):
-                if 'manual' in file.lower() or 'mask' in file.lower():
-                    dest = test_dir / "masks" / file
-                else:
-                    dest = test_dir / "images" / file
+            elif "test" in root_lower:
+                dest = test_dir / ("masks" if is_mask else "images") / file
                 shutil.copy2(src, dest)
                 test_count += 1
-    
-    print(f"✅ Organized {train_count} training files")
-    print(f"✅ Organized {test_count} test files")
-    
-    print("\n" + "="*50)
-    print("✅ Dataset setup complete!")
-    print("="*50)
-    print(f"\n📁 Data structure:")
-    print(f"   Training: {training_dir}")
-    print(f"   Test:     {test_dir}")
-    print(f"\n▶️  Next step: Run train.py to start training")
-    
+
+    print("Dataset setup complete.")
+    print(f"Training files organized: {train_count}")
+    print(f"Test files organized: {test_count}")
+    print(f"Training dir: {training_dir}")
+    print(f"Test dir: {test_dir}")
     return True
 
+
 if __name__ == "__main__":
-    success = setup_drive_dataset()
-    if not success:
-        print("\n⚠️  Setup failed. Please check the error messages above.")
-        exit(1)
+    ok = setup_drive_dataset()
+    if not ok:
+        raise SystemExit(1)
